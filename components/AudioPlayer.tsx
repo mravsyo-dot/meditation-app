@@ -1,107 +1,72 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Howl } from 'howler';
+import { useEffect, useRef } from 'react';
 import { useStore } from '@/lib/store';
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying } = useStore();
-  const soundRef = useRef<Howl | null>(null);
-  const [debugMessage, setDebugMessage] = useState('');
-  const [isIOS, setIsIOS] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
-    setDebugMessage(iOS ? 'iOS detected' : 'Not iOS');
-  }, []);
-
+  // Создаём аудио элемент
   useEffect(() => {
     if (!currentTrack) return;
 
-    setDebugMessage(`Loading: ${currentTrack.title}`);
-    
-    if (soundRef.current) {
-      soundRef.current.unload();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
     }
 
-    const sound = new Howl({
-      src: [currentTrack.src],
-      html5: true,
-      volume: volume,
-      onload: () => {
-        setDebugMessage(`Loaded: ${currentTrack.title}`);
-        setDuration(sound.duration());
-        // На iOS пытаемся "разрешить" звук
-        if (isIOS) {
-          setDebugMessage('iOS: waiting for user interaction');
-        }
-      },
-      onloaderror: (id, error) => {
-        setDebugMessage(`Load error: ${error}`);
-        console.error('Howler load error:', error);
-      },
-      onplay: () => {
-        setDebugMessage('Playing');
-        requestAnimationFrame(updateProgress);
-      },
-      onplayerror: (id, error) => {
-        setDebugMessage(`Play error: ${error}`);
-        console.error('Howler play error:', error);
-        // Пробуем перезагрузить
-        if (isIOS) {
-          setDebugMessage('iOS: retrying...');
-          setTimeout(() => sound.play(), 100);
-        }
-      },
-      onend: () => {
-        setIsPlaying(false);
-        setProgress(0);
-        setDebugMessage('Ended');
-      },
+    const audio = new Audio(currentTrack.src);
+    audio.volume = volume;
+    audio.loop = false;
+    
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration);
+    });
+    
+    audio.addEventListener('timeupdate', () => {
+      setProgress(audio.currentTime);
+    });
+    
+    audio.addEventListener('ended', () => {
+      setIsPlaying(false);
+      setProgress(0);
     });
 
-    soundRef.current = sound;
-
-    if (isPlaying && !isIOS) {
-      sound.play();
-    }
+    audioRef.current = audio;
 
     return () => {
-      sound.unload();
+      audio.pause();
+      audio.src = '';
     };
   }, [currentTrack]);
 
+  // Управление воспроизведением
   useEffect(() => {
-    if (soundRef.current) {
-      soundRef.current.volume(volume);
-    }
-  }, [volume]);
-
-  useEffect(() => {
-    if (!soundRef.current) return;
-    
-    setDebugMessage(isPlaying ? 'User clicked PLAY' : 'User clicked PAUSE');
+    if (!audioRef.current) return;
     
     if (isPlaying) {
-      soundRef.current.play();
+      audioRef.current.play().catch(error => {
+        console.log('Playback error:', error);
+        // iOS требует пользовательского жеста
+        setIsPlaying(false);
+      });
     } else {
-      soundRef.current.pause();
+      audioRef.current.pause();
     }
   }, [isPlaying]);
 
-  const updateProgress = () => {
-    if (soundRef.current && soundRef.current.playing()) {
-      const seek = soundRef.current.seek() as number;
-      setProgress(seek);
-      requestAnimationFrame(updateProgress);
+  // Громкость
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = volume;
     }
-  };
+  }, [volume]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (soundRef.current) {
+    if (audioRef.current) {
       const seekTime = parseFloat(e.target.value);
-      soundRef.current.seek(seekTime);
+      audioRef.current.currentTime = seekTime;
       setProgress(seekTime);
     }
   };
@@ -116,8 +81,6 @@ export default function AudioPlayer() {
           <div className="flex-1">
             <div className="text-white font-medium">{currentTrack.title}</div>
             <div className="text-white/50 text-sm">Медитация</div>
-            {/* Отладочное сообщение */}
-            <div className="text-yellow-300 text-xs mt-1">{debugMessage}</div>
           </div>
         </div>
 
@@ -127,7 +90,7 @@ export default function AudioPlayer() {
           max={useStore.getState().duration || 100}
           value={useStore.getState().progress}
           onChange={handleSeek}
-          className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
+          className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
         />
 
         <div className="flex items-center justify-center gap-6 mt-3">
