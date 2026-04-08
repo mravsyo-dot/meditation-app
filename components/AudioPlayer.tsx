@@ -1,13 +1,22 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Howl } from 'howler';
 import { useStore } from '@/lib/store';
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying } = useStore();
   const soundRef = useRef<Howl | null>(null);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
+  // Определяем iOS
+  useEffect(() => {
+    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    setIsIOS(iOS);
+  }, []);
+
+  // Инициализация трека
   useEffect(() => {
     if (!currentTrack) return;
 
@@ -15,12 +24,13 @@ export default function AudioPlayer() {
       soundRef.current.unload();
     }
 
-    soundRef.current = new Howl({
+    const sound = new Howl({
       src: [currentTrack.src],
       html5: true,
       volume: volume,
       onload: () => {
-        setDuration(soundRef.current?.duration() || 0);
+        setDuration(sound.duration());
+        setIsReady(true);
       },
       onplay: () => {
         requestAnimationFrame(updateProgress);
@@ -31,30 +41,47 @@ export default function AudioPlayer() {
       },
     });
 
-    if (isPlaying) {
-      soundRef.current.play();
+    soundRef.current = sound;
+
+    // Для iOS: не играем автоматически, ждём клика
+    if (!isIOS && isPlaying) {
+      sound.play();
     }
 
     return () => {
-      soundRef.current?.unload();
+      sound.unload();
     };
   }, [currentTrack]);
 
+  // Обновление громкости
   useEffect(() => {
     if (soundRef.current) {
       soundRef.current.volume(volume);
     }
   }, [volume]);
 
+  // Управление воспроизведением с учётом iOS
   useEffect(() => {
-    if (soundRef.current) {
-      if (isPlaying) {
-        soundRef.current.play();
+    if (!soundRef.current || !isReady) return;
+
+    if (isPlaying) {
+      if (isIOS) {
+        // iOS: создаём временный буфер для "разрешения" звука
+        const silentSound = new Howl({
+          src: ['data:audio/wav;base64,U3RlYWx0aCBibGFuayBzb3VuZA=='],
+          volume: 0,
+          onend: () => {
+            soundRef.current?.play();
+          }
+        });
+        silentSound.play();
       } else {
-        soundRef.current.pause();
+        soundRef.current.play();
       }
+    } else {
+      soundRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, isReady, isIOS]);
 
   const updateProgress = () => {
     if (soundRef.current && soundRef.current.playing()) {
@@ -75,7 +102,7 @@ export default function AudioPlayer() {
   if (!currentTrack) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-black/50 backdrop-blur-lg border-t border-white/10 p-4">    
+    <div className="fixed bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-black/50 backdrop-blur-lg border-t border-white/10 p-4">
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-2">
           <div className="text-3xl">{currentTrack.icon}</div>
@@ -83,6 +110,9 @@ export default function AudioPlayer() {
             <div className="text-white font-medium">{currentTrack.title}</div>
             <div className="text-white/50 text-sm">Медитация</div>
           </div>
+          {isIOS && !isReady && (
+            <div className="text-white/50 text-xs">Загрузка...</div>
+          )}
         </div>
 
         <input
