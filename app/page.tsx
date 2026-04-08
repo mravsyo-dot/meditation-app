@@ -9,14 +9,12 @@ export default function Home() {
 
   const handleTrackClick = (track: typeof tracks[0]) => {
     console.log('Track clicked:', track.title);
+    alert(`Вы выбрали: ${track.title}`); // Временное окно для проверки клика
     
     if (currentTrack?.id === track.id) {
-      // Тот же трек — просто играем
       setIsPlaying(true);
     } else {
-      // Новый трек
       setCurrentTrack(track);
-      // Немного задержки для iOS
       setTimeout(() => {
         setIsPlaying(true);
       }, 100);
@@ -35,10 +33,10 @@ export default function Home() {
 
         <div className="max-w-2xl mx-auto space-y-4">
           {tracks.map((track) => (
-            <div
+            <button
               key={track.id}
               onClick={() => handleTrackClick(track)}
-              className="bg-white/10 backdrop-blur-md rounded-2xl p-4 cursor-pointer hover:bg-white/20 transition-all border border-white/20 active:scale-95"
+              className="w-full bg-white/10 backdrop-blur-md rounded-2xl p-4 hover:bg-white/20 transition-all border border-white/20 active:scale-95 text-left"
             >
               <div className="flex items-center gap-4">
                 <div className="text-5xl">{track.icon}</div>
@@ -50,7 +48,7 @@ export default function Home() {
                   {currentTrack?.id === track.id ? (isPlaying ? '🔊' : '⏸️') : '🎵'}
                 </div>
               </div>
-            </div>
+            </button>
           ))}
         </div>
       </div>
