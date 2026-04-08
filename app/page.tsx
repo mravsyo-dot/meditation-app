@@ -3,13 +3,14 @@
 import { useStore } from '@/lib/store';
 import { tracks } from '@/lib/tracks';
 import AudioPlayer from '@/components/AudioPlayer';
+import { useTouchFix } from '@/hooks/useTouch';
 
 export default function Home() {
   const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying } = useStore();
+  useTouchFix(); // Добавляем фикс для iOS
 
   const handleTrackClick = (track: typeof tracks[0]) => {
     console.log('Track clicked:', track.title);
-    alert(`Вы выбрали: ${track.title}`); // Временное окно для проверки клика
     
     if (currentTrack?.id === track.id) {
       setIsPlaying(true);
@@ -37,6 +38,7 @@ export default function Home() {
               key={track.id}
               onClick={() => handleTrackClick(track)}
               className="w-full bg-white/10 backdrop-blur-md rounded-2xl p-4 hover:bg-white/20 transition-all border border-white/20 active:scale-95 text-left"
+              style={{ touchAction: 'manipulation' }}
             >
               <div className="flex items-center gap-4">
                 <div className="text-5xl">{track.icon}</div>
