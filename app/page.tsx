@@ -1,25 +1,35 @@
 'use client';
 
+import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { tracks } from '@/lib/tracks';
 import AudioPlayer from '@/components/AudioPlayer';
-import { useTouchFix } from '@/hooks/useTouch';
 
 export default function Home() {
   const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying } = useStore();
-  useTouchFix(); // Добавляем фикс для iOS
+  const [debugMessage, setDebugMessage] = useState('Ожидание клика...');
 
   const handleTrackClick = (track: typeof tracks[0]) => {
-    console.log('Track clicked:', track.title);
+    setDebugMessage(`Клик по: ${track.title}`);
     
-    if (currentTrack?.id === track.id) {
-      setIsPlaying(true);
-    } else {
-      setCurrentTrack(track);
-      setTimeout(() => {
+    try {
+      if (currentTrack?.id === track.id) {
         setIsPlaying(true);
-      }, 100);
+      } else {
+        setCurrentTrack(track);
+        setTimeout(() => {
+          setIsPlaying(true);
+        }, 100);
+      }
+      setDebugMessage(`Успешно: ${track.title}`);
+    } catch (error) {
+      setDebugMessage(`Ошибка: ${error}`);
     }
+  };
+
+  const testAlert = () => {
+    setDebugMessage('Нажата тестовая кнопка');
+    alert('Тестовый alert');
   };
 
   return (
@@ -27,16 +37,20 @@ export default function Home() {
       <div className="container mx-auto px-4 py-12 pb-32">
         <h1 className="text-4xl md:text-6xl font-bold text-white text-center mb-4">
           🧘 Медитация
-          <button 
-          onClick={() => alert('Клик работает!')}
-          className="bg-white text-black p-4 rounded-xl mb-8"
-          >
-          Тестовая кнопка (нажми меня)
-          </button>
-        
         </h1>
+        
+        {/* Отладочная панель */}
+        <div className="bg-yellow-500/20 border border-yellow-500/50 rounded-lg p-3 mb-6 text-center">
+          <p className="text-white/90 text-sm font-mono">{debugMessage}</p>
+        </div>
 
-
+        {/* Тестовая кнопка */}
+        <button 
+          onClick={testAlert}
+          className="bg-white text-black p-4 rounded-xl mb-8 w-full font-bold"
+        >
+          🔧 Тестовая кнопка (нажми меня)
+        </button>
 
         <p className="text-white/70 text-center mb-12">
           Нажми на трек, затем на Play
