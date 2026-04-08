@@ -7,19 +7,20 @@ import { useStore } from '@/lib/store';
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying } = useStore();
   const soundRef = useRef<Howl | null>(null);
+  const [debugMessage, setDebugMessage] = useState('');
   const [isIOS, setIsIOS] = useState(false);
-  const [isReady, setIsReady] = useState(false);
 
-  // Определяем iOS
   useEffect(() => {
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     setIsIOS(iOS);
+    setDebugMessage(iOS ? 'iOS detected' : 'Not iOS');
   }, []);
 
-  // Инициализация трека
   useEffect(() => {
     if (!currentTrack) return;
 
+    setDebugMessage(`Loading: ${currentTrack.title}`);
+    
     if (soundRef.current) {
       soundRef.current.unload();
     }
@@ -29,22 +30,40 @@ export default function AudioPlayer() {
       html5: true,
       volume: volume,
       onload: () => {
+        setDebugMessage(`Loaded: ${currentTrack.title}`);
         setDuration(sound.duration());
-        setIsReady(true);
+        // На iOS пытаемся "разрешить" звук
+        if (isIOS) {
+          setDebugMessage('iOS: waiting for user interaction');
+        }
+      },
+      onloaderror: (id, error) => {
+        setDebugMessage(`Load error: ${error}`);
+        console.error('Howler load error:', error);
       },
       onplay: () => {
+        setDebugMessage('Playing');
         requestAnimationFrame(updateProgress);
+      },
+      onplayerror: (id, error) => {
+        setDebugMessage(`Play error: ${error}`);
+        console.error('Howler play error:', error);
+        // Пробуем перезагрузить
+        if (isIOS) {
+          setDebugMessage('iOS: retrying...');
+          setTimeout(() => sound.play(), 100);
+        }
       },
       onend: () => {
         setIsPlaying(false);
         setProgress(0);
+        setDebugMessage('Ended');
       },
     });
 
     soundRef.current = sound;
 
-    // Для iOS: не играем автоматически, ждём клика
-    if (!isIOS && isPlaying) {
+    if (isPlaying && !isIOS) {
       sound.play();
     }
 
@@ -53,35 +72,23 @@ export default function AudioPlayer() {
     };
   }, [currentTrack]);
 
-  // Обновление громкости
   useEffect(() => {
     if (soundRef.current) {
       soundRef.current.volume(volume);
     }
   }, [volume]);
 
-  // Управление воспроизведением с учётом iOS
   useEffect(() => {
-    if (!soundRef.current || !isReady) return;
-
+    if (!soundRef.current) return;
+    
+    setDebugMessage(isPlaying ? 'User clicked PLAY' : 'User clicked PAUSE');
+    
     if (isPlaying) {
-      if (isIOS) {
-        // iOS: создаём временный буфер для "разрешения" звука
-        const silentSound = new Howl({
-          src: ['data:audio/wav;base64,U3RlYWx0aCBibGFuayBzb3VuZA=='],
-          volume: 0,
-          onend: () => {
-            soundRef.current?.play();
-          }
-        });
-        silentSound.play();
-      } else {
-        soundRef.current.play();
-      }
+      soundRef.current.play();
     } else {
       soundRef.current.pause();
     }
-  }, [isPlaying, isReady, isIOS]);
+  }, [isPlaying]);
 
   const updateProgress = () => {
     if (soundRef.current && soundRef.current.playing()) {
@@ -109,10 +116,9 @@ export default function AudioPlayer() {
           <div className="flex-1">
             <div className="text-white font-medium">{currentTrack.title}</div>
             <div className="text-white/50 text-sm">Медитация</div>
+            {/* Отладочное сообщение */}
+            <div className="text-yellow-300 text-xs mt-1">{debugMessage}</div>
           </div>
-          {isIOS && !isReady && (
-            <div className="text-white/50 text-xs">Загрузка...</div>
-          )}
         </div>
 
         <input
