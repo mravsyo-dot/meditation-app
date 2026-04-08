@@ -28,6 +28,14 @@ export default function Home() {
         <h1 className="text-4xl md:text-6xl font-bold text-white text-center mb-4">
           🧘 Медитация
         </h1>
+
+        <button 
+        onClick={() => alert('Клик работает!')}
+        className="bg-white text-black p-4 rounded-xl mb-8"
+        >
+        Тестовая кнопка (нажми меня)
+        </button>
+
         <p className="text-white/70 text-center mb-12">
           Нажми на трек, затем на Play
         </p>
