@@ -1,22 +1,23 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '@/lib/store';
 import { tracks } from '@/lib/tracks';
 import AudioPlayer from '@/components/AudioPlayer';
 
 export default function Home() {
   const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying } = useStore();
-  const [debugMessage, setDebugMessage] = useState('Готов к работе');
+  const [clickCount, setClickCount] = useState(0);
 
   const handleTrackClick = (track: typeof tracks[0]) => {
-    setDebugMessage(`Выбран трек: ${track.title}`);
+    setClickCount(prev => prev + 1);
+    console.log('Track clicked:', track.title, 'Click count:', clickCount + 1);
     
     if (currentTrack?.id === track.id) {
       setIsPlaying(!isPlaying);
     } else {
       setCurrentTrack(track);
-      setIsPlaying(true);
+      // Не вызываем setIsPlaying(true) сразу, пусть пользователь сам нажмет Play
     }
   };
 
@@ -26,7 +27,9 @@ export default function Home() {
         <header className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-4">🧘 Медитация</h1>
           <div className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1">
-            <p className="text-white/60 text-xs font-mono">{debugMessage}</p>
+            <p className="text-white/60 text-xs font-mono">
+              Кликов: {clickCount} | Трек: {currentTrack?.title || 'нет'}
+            </p>
           </div>
         </header>
 
@@ -34,14 +37,18 @@ export default function Home() {
           {tracks.map((track) => (
             <button
               key={track.id}
-              type="button"
               onClick={() => handleTrackClick(track)}
+              onTouchStart={(e) => {
+                e.preventDefault();
+                handleTrackClick(track);
+              }}
               className={`
                 w-full p-5 rounded-3xl transition-all duration-300 text-left border
                 ${currentTrack?.id === track.id 
                   ? 'bg-white/20 border-white/30 scale-[1.02]' 
                   : 'bg-white/5 border-white/10 hover:bg-white/10 active:scale-95'}
               `}
+              style={{ touchAction: 'manipulation' }}
             >
               <div className="flex items-center gap-5">
                 <div className="text-5xl bg-black/20 w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner">
