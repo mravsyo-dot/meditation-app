@@ -6,27 +6,25 @@ import { tracks } from '@/lib/tracks';
 import AudioPlayer from '@/components/AudioPlayer';
 
 export default function Home() {
-  const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying } = useStore();
-  const [clickCount, setClickCount] = useState(0);
-  const [releaseTime, setReleaseTime] = useState<string>('');
+  const { currentTrack, setCurrentTrack, setIsPlaying } = useStore();
+  const [releaseTime, setReleaseTime] = useState('');
 
   useEffect(() => {
-    const releaseDate = new Date('2026-04-13T18:00:00+03:00');
-    setReleaseTime(releaseDate.toLocaleString());
+    const date = new Date('2026-04-13T18:00:00+03:00');
+    setReleaseTime(date.toLocaleString());
   }, []);
 
-  const handleTrackClick = (track: typeof tracks[0]) => {
-    setClickCount(prev => prev + 1);
-    console.log('Track clicked:', track.title);
+  const selectTrack = (track: typeof tracks[0]) => {
+    console.log('Selecting track:', track.title);
     
     if (currentTrack?.id === track.id) {
-      // Если тот же трек - ставим на паузу или играем
-      setIsPlaying(!isPlaying);
-    } else {
-      // Меняем трек, НЕ включаем воспроизведение автоматически
-      setCurrentTrack(track);
-      // На iOS пользователь сам нажмет Play
+      // Тот же трек - ничего не делаем, пусть плеером управляют
+      return;
     }
+    
+    // Просто устанавливаем трек, НЕ включаем воспроизведение
+    setCurrentTrack(track);
+    setIsPlaying(false);
   };
 
   return (
@@ -34,15 +32,8 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16 pb-48">
         <header className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-4">🧘 Медитация</h1>
-          <div className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1 mb-2">
-            <p className="text-white/60 text-xs font-mono">
-              Кликов: {clickCount} | Трек: {currentTrack?.title || 'нет'}
-            </p>
-          </div>
           <div className="inline-block bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-1">
-            <p className="text-emerald-400 text-xs font-mono">
-              🚀 Релиз: {releaseTime}
-            </p>
+            <p className="text-emerald-400 text-xs font-mono">🚀 Релиз: {releaseTime}</p>
           </div>
         </header>
 
@@ -50,36 +41,21 @@ export default function Home() {
           {tracks.map((track) => (
             <button
               key={track.id}
-              onClick={handleTrackClick.bind(null, track)}
+              onClick={() => selectTrack(track)}
               className={`
                 w-full p-5 rounded-3xl transition-all duration-300 text-left border
                 ${currentTrack?.id === track.id 
                   ? 'bg-white/20 border-white/30 scale-[1.02]' 
                   : 'bg-white/5 border-white/10 hover:bg-white/10 active:scale-95'}
               `}
-              style={{ touchAction: 'manipulation' }}
             >
               <div className="flex items-center gap-5">
-                <div className="text-5xl bg-black/20 w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner">
+                <div className="text-5xl bg-black/20 w-16 h-16 rounded-2xl flex items-center justify-center">
                   {track.icon}
                 </div>
                 <div className="flex-1">
                   <div className="text-white text-xl font-semibold mb-1">{track.title}</div>
-                  <div className="text-white/40 text-sm flex items-center gap-2">
-                    <span className="inline-block w-1 h-1 bg-white/30 rounded-full"></span>
-                    {track.duration}
-                  </div>
-                </div>
-                <div className="text-2xl">
-                  {currentTrack?.id === track.id && isPlaying ? (
-                    <div className="flex gap-1 items-end h-5">
-                      <div className="w-1 bg-white animate-pulse h-full"></div>
-                      <div className="w-1 bg-white animate-pulse h-3"></div>
-                      <div className="w-1 bg-white animate-pulse h-5"></div>
-                    </div>
-                  ) : (
-                    <span className="opacity-30 text-white">→</span>
-                  )}
+                  <div className="text-white/40 text-sm">{track.duration}</div>
                 </div>
               </div>
             </button>
