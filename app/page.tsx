@@ -8,10 +8,17 @@ import AudioPlayer from '@/components/AudioPlayer';
 export default function Home() {
   const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying } = useStore();
   const [clickCount, setClickCount] = useState(0);
+  const [releaseTime, setReleaseTime] = useState<string>('');
+
+  useEffect(() => {
+    // Время финального релиза
+    const releaseDate = new Date('2026-04-13T18:00:00+03:00');
+    setReleaseTime(releaseDate.toLocaleString());
+  }, []);
 
   const handleTrackClick = (track: typeof tracks[0]) => {
     setClickCount(prev => prev + 1);
-    console.log('Track clicked:', track.title, 'Click count:', clickCount + 1);
+    console.log('Track clicked:', track.title);
     
     if (currentTrack?.id === track.id) {
       setIsPlaying(!isPlaying);
@@ -26,9 +33,14 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16 pb-48">
         <header className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-4">🧘 Медитация</h1>
-          <div className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1">
+          <div className="inline-block bg-white/5 border border-white/10 rounded-full px-4 py-1 mb-2">
             <p className="text-white/60 text-xs font-mono">
               Кликов: {clickCount} | Трек: {currentTrack?.title || 'нет'}
+            </p>
+          </div>
+          <div className="inline-block bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-1">
+            <p className="text-emerald-400 text-xs font-mono">
+              🚀 Релиз: {releaseTime}
             </p>
           </div>
         </header>
