@@ -1,56 +1,66 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
+import SimplePlayer from '@/components/SimplePlayer';
 
-declare global {
-  interface Window {
-    initPlayer: (id: string, src: string, title: string, icon: string) => void;
-    togglePlayPause: () => void;
-    seek: (value: number) => void;
-  }
+interface Track {
+  id: string;
+  title: string;
+  duration: string;
+  src: string;
+  icon: string;
 }
 
 export default function Home() {
+  const [selectedTrack, setSelectedTrack] = useState<Track | null>(null);
   const [releaseTime, setReleaseTime] = useState('');
+
+  const tracks: Track[] = [
+    { id: '1', title: 'Спокойный дождь', duration: '05:23', src: '/sounds/abc.m4a', icon: '🌧️' },
+    { id: '2', title: 'Лесные звуки', duration: '07:15', src: '/sounds/abca.m4a', icon: '🌲' }
+  ];
 
   useEffect(() => {
     const date = new Date('2026-04-13T18:00:00+03:00');
     setReleaseTime(date.toLocaleString());
   }, []);
 
-  const tracks = [
-    { id: '1', title: 'Спокойный дождь', duration: '05:23', src: '/sounds/abc.m4a', icon: '🌧️' },
-    { id: '2', title: 'Лесные звуки', duration: '07:15', src: '/sounds/abca.m4a', icon: '🌲' }
-  ];
-
-  const selectTrack = (track: typeof tracks[0]) => {
-    if (window.initPlayer) {
-      window.initPlayer(track.id, track.src, track.title, track.icon);
-    } else {
-      console.error('Player not loaded yet');
-    }
+  const selectTrack = (track: Track) => {
+    console.log('Selecting track:', track.title);
+    setSelectedTrack(track);
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 p-4">
-      <div className="max-w-xl mx-auto pb-32">
-        <h1 className="text-3xl font-bold text-white text-center mb-4">🧘 Медитация</h1>
-        
-        <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-2 text-center mb-8">
-          <p className="text-emerald-400 text-sm">🚀 Релиз: {releaseTime}</p>
-        </div>
-        
-        <div className="space-y-3">
-          {tracks.map(track => (
+    <main className="min-h-screen bg-slate-950">
+      <div className="container mx-auto px-4 py-16 pb-48">
+        <header className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-white mb-4">🧘 Медитация</h1>
+          <div className="inline-block bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-1">
+            <p className="text-emerald-400 text-xs font-mono">
+              🚀 Релиз: {releaseTime || 'загрузка...'}
+            </p>
+          </div>
+        </header>
+
+        <div className="max-w-xl mx-auto grid gap-4">
+          {tracks.map((track) => (
             <button
               key={track.id}
               onClick={() => selectTrack(track)}
-              className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-left"
+              className={`
+                w-full p-5 rounded-3xl transition-all duration-300 text-left border
+                ${selectedTrack?.id === track.id 
+                  ? 'bg-white/20 border-white/30 scale-[1.02]' 
+                  : 'bg-white/5 border-white/10 hover:bg-white/10 active:scale-95'}
+              `}
+              style={{ touchAction: 'manipulation' }}
             >
-              <div className="flex items-center gap-4">
-                <span className="text-4xl">{track.icon}</span>
-                <div>
-                  <div className="text-white font-semibold">{track.title}</div>
+              <div className="flex items-center gap-5">
+                <div className="text-5xl bg-black/20 w-16 h-16 rounded-2xl flex items-center justify-center">
+                  {track.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="text-white text-xl font-semibold mb-1">{track.title}</div>
                   <div className="text-white/40 text-sm">{track.duration}</div>
                 </div>
               </div>
@@ -59,38 +69,7 @@ export default function Home() {
         </div>
       </div>
       
-      {/* Плеер внизу */}
-      <div id="player" style={{ display: 'none' }} className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/20 p-6">
-        <div className="max-w-xl mx-auto">
-          <div className="flex items-center gap-4 mb-4">
-            <span id="playerIcon" className="text-4xl"></span>
-            <div className="flex-1">
-              <div id="playerTitle" className="text-white font-semibold"></div>
-              <div className="text-yellow-400 text-xs">Нажмите на кнопку</div>
-            </div>
-          </div>
-          
-          <input
-            type="range"
-            id="progressBar"
-            min="0"
-            max="100"
-            defaultValue="0"
-            onChange={(e) => window.seek(parseFloat(e.target.value))}
-            className="w-full mb-4"
-            style={{ accentColor: 'white' }}
-          />
-          
-          <div className="flex justify-center">
-            <button
-              onClick={() => window.togglePlayPause()}
-              className="w-20 h-20 bg-white text-black rounded-full text-4xl flex items-center justify-center active:scale-95 transition"
-            >
-              ▶️
-            </button>
-          </div>
-        </div>
-      </div>
+      <SimplePlayer track={selectedTrack} />
     </main>
   );
 }
