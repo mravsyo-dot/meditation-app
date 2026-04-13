@@ -15,7 +15,7 @@ export default function Home() {
     if (currentTrack?.id === track.id) {
       setIsPlaying(!isPlaying);
     } else {
-      // Сначала меняем трек, воспроизведение подхватит useEffect в AudioPlayer
+      // Сначала меняем трек, воспроизведение подхватит useEffect в AudioPlayer ааа
       setCurrentTrack(track);
       setIsPlaying(true);
     }
