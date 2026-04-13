@@ -4,57 +4,25 @@ import { useEffect, useRef } from 'react';
 import { useStore } from '@/lib/store';
 
 export default function AudioPlayer() {
-  const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying } = useStore();
+  const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying, progress } = useStore();
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Создаём аудио элемент
+  // Синхронизация воспроизведения
   useEffect(() => {
-    if (!currentTrack) return;
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
-    }
-
-    const audio = new Audio(currentTrack.src);
-    audio.volume = volume;
-    audio.loop = false;
-    
-    audio.addEventListener('loadedmetadata', () => {
-      setDuration(audio.duration);
-    });
-    
-    audio.addEventListener('timeupdate', () => {
-      setProgress(audio.currentTime);
-    });
-    
-    audio.addEventListener('ended', () => {
-      setIsPlaying(false);
-      setProgress(0);
-    });
-
-    audioRef.current = audio;
-
-    return () => {
-      audio.pause();
-      audio.src = '';
-    };
-  }, [currentTrack]);
-
-  // Управление воспроизведением
-  useEffect(() => {
-    if (!audioRef.current) return;
+    if (!audioRef.current || !currentTrack) return;
     
     if (isPlaying) {
-      audioRef.current.play().catch(error => {
-        console.log('Playback error:', error);
-        // iOS требует пользовательского жеста
-        setIsPlaying(false);
-      });
+      const playPromise = audioRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          console.error('iOS Playback error:', error);
+          setIsPlaying(false);
+        });
+      }
     } else {
       audioRef.current.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack, setIsPlaying]);
 
   // Громкость
   useEffect(() => {
@@ -62,6 +30,19 @@ export default function AudioPlayer() {
       audioRef.current.volume = volume;
     }
   }, [volume]);
+
+  const onLoadedMetadata = () => {
+    if (audioRef.current) setDuration(audioRef.current.duration);
+  };
+
+  const onTimeUpdate = () => {
+    if (audioRef.current) setProgress(audioRef.current.currentTime);
+  };
+
+  const onEnded = () => {
+    setIsPlaying(false);
+    setProgress(0);
+  };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (audioRef.current) {
@@ -74,32 +55,46 @@ export default function AudioPlayer() {
   if (!currentTrack) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-black/50 backdrop-blur-lg border-t border-white/10 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-4 mb-2">
-          <div className="text-3xl">{currentTrack.icon}</div>
+    <div className="fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-xl border-t border-white/10 p-6 z-50">
+      {/* Скрытый элемент аудио — единственный надежный способ для iOS Safari */}
+      <audio
+        ref={audioRef}
+        src={currentTrack.src}
+        onLoadedMetadata={onLoadedMetadata}
+        onTimeUpdate={onTimeUpdate}
+        onEnded={onEnded}
+        playsInline
+      />
+
+      <div className="max-w-2xl mx-auto">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="text-4xl">{currentTrack.icon}</div>
           <div className="flex-1">
-            <div className="text-white font-medium">{currentTrack.title}</div>
-            <div className="text-white/50 text-sm">Медитация</div>
+            <div className="text-white font-semibold text-lg">{currentTrack.title}</div>
+            <div className="text-white/40 text-sm">Медитация</div>
           </div>
         </div>
 
-        <input
-          type="range"
-          min="0"
-          max={useStore.getState().duration || 100}
-          value={useStore.getState().progress}
-          onChange={handleSeek}
-          className="w-full h-1 bg-white/20 rounded-lg appearance-none cursor-pointer"
-        />
+        <div className="space-y-4">
+          <input
+            type="range"
+            min="0"
+            max={useStore.getState().duration || 100}
+            value={progress}
+            onChange={handleSeek}
+            className="w-full h-1.5 bg-white/20 rounded-lg appearance-none cursor-pointer accent-white"
+          />
 
-        <div className="flex items-center justify-center gap-6 mt-3">
-          <button
-            onClick={() => setIsPlaying(!isPlaying)}
-            className="w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all"
-          >
-            {isPlaying ? '⏸️' : '▶️'}
-          </button>
+          <div className="flex items-center justify-center">
+            <button
+              type="button"
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg"
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              <span className="text-3xl">{isPlaying ? '⏸️' : '▶️'}</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
