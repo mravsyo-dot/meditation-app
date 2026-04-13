@@ -1,21 +1,21 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
+
+declare global {
+  interface Window {
+    initPlayer: (id: string, src: string, title: string, icon: string) => void;
+    togglePlayPause: () => void;
+    seek: (value: number) => void;
+  }
+}
 
 export default function Home() {
   const [releaseTime, setReleaseTime] = useState('');
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTrack, setCurrentTrack] = useState<{title: string, src: string, icon: string} | null>(null);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [error, setError] = useState('');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Время релиза
   useEffect(() => {
     const date = new Date('2026-04-13T18:00:00+03:00');
     setReleaseTime(date.toLocaleString());
-    setError('Страница загружена, ждите...');
   }, []);
 
   const tracks = [
@@ -24,92 +24,28 @@ export default function Home() {
   ];
 
   const selectTrack = (track: typeof tracks[0]) => {
-    setError(`Выбран трек: ${track.title}`);
-    setCurrentTrack(track);
-    setIsPlaying(false);
-    setProgress(0);
-    setDuration(0);
-    
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = '';
-    }
-    
-    const audio = new Audio(track.src);
-    audio.preload = 'auto';
-    audio.setAttribute('playsinline', 'true');
-    
-    audio.addEventListener('loadedmetadata', () => {
-      setDuration(audio.duration);
-      setError(`Загружено: ${track.title}`);
-    });
-    audio.addEventListener('timeupdate', () => setProgress(audio.currentTime));
-    audio.addEventListener('ended', () => {
-      setIsPlaying(false);
-      setProgress(0);
-    });
-    audio.addEventListener('error', (e) => setError(`Ошибка: ${track.title}`));
-    
-    audioRef.current = audio;
-  };
-
-  const playPause = async () => {
-    const audio = audioRef.current;
-    if (!audio) {
-      setError('Сначала выберите трек');
-      return;
-    }
-    
-    if (isPlaying) {
-      audio.pause();
-      setIsPlaying(false);
-      setError('Пауза');
+    if (window.initPlayer) {
+      window.initPlayer(track.id, track.src, track.title, track.icon);
     } else {
-      try {
-        await audio.play();
-        setIsPlaying(true);
-        setError('Играет');
-      } catch (err: any) {
-        setError(`Ошибка: ${err.message}`);
-      }
-    }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (audio) {
-      const val = parseFloat(e.target.value);
-      audio.currentTime = val;
-      setProgress(val);
+      console.error('Player not loaded yet');
     }
   };
 
   return (
     <main className="min-h-screen bg-slate-950 p-4">
-      <div className="max-w-xl mx-auto">
+      <div className="max-w-xl mx-auto pb-32">
         <h1 className="text-3xl font-bold text-white text-center mb-4">🧘 Медитация</h1>
         
-        {/* Время релиза */}
-        <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-2 text-center mb-4">
-          <p className="text-emerald-400 text-sm font-mono">🚀 Релиз: {releaseTime || 'загрузка...'}</p>
+        <div className="bg-emerald-500/20 border border-emerald-500/30 rounded-full px-4 py-2 text-center mb-8">
+          <p className="text-emerald-400 text-sm">🚀 Релиз: {releaseTime}</p>
         </div>
         
-        {/* Ошибки/статус */}
-        <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg px-4 py-2 text-center mb-4">
-          <p className="text-yellow-400 text-xs font-mono break-all">{error || 'Готов'}</p>
-        </div>
-        
-        {/* Список треков */}
-        <div className="space-y-3 mb-8">
+        <div className="space-y-3">
           {tracks.map(track => (
             <button
               key={track.id}
               onClick={() => selectTrack(track)}
-              onTouchStart={(e) => { e.preventDefault(); selectTrack(track); }}
-              className={`w-full p-4 rounded-2xl text-left border transition-all
-                ${currentTrack?.title === track.title 
-                  ? 'bg-white/20 border-white/30' 
-                  : 'bg-white/5 border-white/10 hover:bg-white/10'}`}
+              className="w-full p-4 rounded-2xl bg-white/5 border border-white/10 text-left"
             >
               <div className="flex items-center gap-4">
                 <span className="text-4xl">{track.icon}</span>
@@ -121,41 +57,39 @@ export default function Home() {
             </button>
           ))}
         </div>
-        
-        {/* Плеер (показывается только если выбран трек) */}
-        {currentTrack && (
-          <div className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/20 p-6">
-            <div className="max-w-xl mx-auto">
-              <div className="flex items-center gap-4 mb-4">
-                <span className="text-4xl">{currentTrack.icon}</span>
-                <div className="flex-1">
-                  <div className="text-white font-semibold">{currentTrack.title}</div>
-                  <div className="text-yellow-400 text-xs">Нажмите на кнопку</div>
-                </div>
-              </div>
-              
-              <input
-                type="range"
-                min="0"
-                max={duration || 100}
-                value={progress}
-                onChange={handleSeek}
-                className="w-full mb-4"
-                style={{ accentColor: 'white' }}
-              />
-              
-              <div className="flex justify-center">
-                <button
-                  onClick={playPause}
-                  onTouchStart={(e) => { e.preventDefault(); playPause(); }}
-                  className="w-20 h-20 bg-white text-black rounded-full text-4xl flex items-center justify-center active:scale-95 transition"
-                >
-                  {isPlaying ? '⏸️' : '▶️'}
-                </button>
-              </div>
+      </div>
+      
+      {/* Плеер внизу */}
+      <div id="player" style={{ display: 'none' }} className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/20 p-6">
+        <div className="max-w-xl mx-auto">
+          <div className="flex items-center gap-4 mb-4">
+            <span id="playerIcon" className="text-4xl"></span>
+            <div className="flex-1">
+              <div id="playerTitle" className="text-white font-semibold"></div>
+              <div className="text-yellow-400 text-xs">Нажмите на кнопку</div>
             </div>
           </div>
-        )}
+          
+          <input
+            type="range"
+            id="progressBar"
+            min="0"
+            max="100"
+            defaultValue="0"
+            onChange={(e) => window.seek(parseFloat(e.target.value))}
+            className="w-full mb-4"
+            style={{ accentColor: 'white' }}
+          />
+          
+          <div className="flex justify-center">
+            <button
+              onClick={() => window.togglePlayPause()}
+              className="w-20 h-20 bg-white text-black rounded-full text-4xl flex items-center justify-center active:scale-95 transition"
+            >
+              ▶️
+            </button>
+          </div>
+        </div>
       </div>
     </main>
   );
