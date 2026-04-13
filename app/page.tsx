@@ -11,7 +11,6 @@ export default function Home() {
   const [releaseTime, setReleaseTime] = useState<string>('');
 
   useEffect(() => {
-    // Время финального релиза
     const releaseDate = new Date('2026-04-13T18:00:00+03:00');
     setReleaseTime(releaseDate.toLocaleString());
   }, []);
@@ -21,10 +20,12 @@ export default function Home() {
     console.log('Track clicked:', track.title);
     
     if (currentTrack?.id === track.id) {
+      // Если тот же трек - ставим на паузу или играем
       setIsPlaying(!isPlaying);
     } else {
+      // Меняем трек, НЕ включаем воспроизведение автоматически
       setCurrentTrack(track);
-      // Не вызываем setIsPlaying(true) сразу, пусть пользователь сам нажмет Play
+      // На iOS пользователь сам нажмет Play
     }
   };
 
@@ -49,11 +50,7 @@ export default function Home() {
           {tracks.map((track) => (
             <button
               key={track.id}
-              onClick={() => handleTrackClick(track)}
-              onTouchStart={(e) => {
-                e.preventDefault();
-                handleTrackClick(track);
-              }}
+              onClick={handleTrackClick.bind(null, track)}
               className={`
                 w-full p-5 rounded-3xl transition-all duration-300 text-left border
                 ${currentTrack?.id === track.id 

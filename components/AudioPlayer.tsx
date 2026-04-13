@@ -5,26 +5,24 @@ import { useStore } from '@/lib/store';
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying, progress } = useStore();
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [testClick, setTestClick] = useState(0);
+  const [isIOS, setIsIOS] = useState(false);
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null);
+  const [isAudioLoaded, setIsAudioLoaded] = useState(false);
 
-  // Проверка что клики работают
-  const handleTestClick = () => {
-    setTestClick(prev => prev + 1);
-    console.log('Click registered:', testClick + 1);
-    alert(`Клик работает! Счетчик: ${testClick + 1}`);
-  };
-
-  // Создаем аудио элемент
   useEffect(() => {
-    if (!currentTrack) return;
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
+  }, []);
 
-    console.log('Setting up audio for:', currentTrack.title);
-    
-    if (audioRef.current) {
-      audioRef.current.pause();
+  // Создаем аудио элемент при смене трека
+  useEffect(() => {
+    if (!currentTrack) {
+      setAudioElement(null);
+      setIsAudioLoaded(false);
+      return;
     }
 
+    console.log('Creating audio for:', currentTrack.title);
+    
     const audio = new Audio(currentTrack.src);
     audio.preload = 'auto';
     audio.volume = volume;
@@ -33,6 +31,7 @@ export default function AudioPlayer() {
     const onLoadedMetadata = () => {
       console.log('Audio loaded, duration:', audio.duration);
       setDuration(audio.duration);
+      setIsAudioLoaded(true);
     };
     
     const onTimeUpdate = () => {
@@ -47,7 +46,7 @@ export default function AudioPlayer() {
     
     const onError = (e: ErrorEvent) => {
       console.error('Audio error:', e);
-      alert(`Ошибка загрузки аудио: ${currentTrack.title}`);
+      alert(`Ошибка загрузки: ${currentTrack.title}`);
     };
     
     audio.addEventListener('loadedmetadata', onLoadedMetadata);
@@ -55,7 +54,7 @@ export default function AudioPlayer() {
     audio.addEventListener('ended', onEnded);
     audio.addEventListener('error', onError);
     
-    audioRef.current = audio;
+    setAudioElement(audio);
 
     return () => {
       audio.removeEventListener('loadedmetadata', onLoadedMetadata);
@@ -63,87 +62,72 @@ export default function AudioPlayer() {
       audio.removeEventListener('ended', onEnded);
       audio.removeEventListener('error', onError);
       audio.pause();
+      audio.src = '';
     };
   }, [currentTrack, setDuration, setProgress, setIsPlaying, volume]);
 
-  // Управление воспроизведением
+  // Отдельный эффект для громкости
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
+    if (audioElement) {
+      audioElement.volume = volume;
+    }
+  }, [volume, audioElement]);
 
-    const handlePlay = async () => {
-      if (isPlaying) {
-        try {
-          console.log('Attempting to play...');
-          await audio.play();
-          console.log('Playing successfully');
-        } catch (err) {
-          console.error('Play error:', err);
-          setIsPlaying(false);
-          alert('Нажмите на кнопку Play еще раз');
-        }
-      } else {
-        audio.pause();
-        console.log('Paused');
+  // Функция воспроизведения - вызывается ТОЛЬКО по клику
+  const handlePlayPause = async () => {
+    if (!audioElement || !currentTrack) {
+      console.log('No audio element');
+      return;
+    }
+
+    console.log('Play/Pause clicked, current isPlaying:', isPlaying);
+
+    if (isPlaying) {
+      // Пауза
+      audioElement.pause();
+      setIsPlaying(false);
+    } else {
+      // Воспроизведение - прямой вызов play() в обработчике клика
+      try {
+        await audioElement.play();
+        console.log('Play success');
+        setIsPlaying(true);
+      } catch (err) {
+        console.error('Play error:', err);
+        alert('Нажмите еще раз для воспроизведения');
       }
-    };
-
-    handlePlay();
-  }, [isPlaying, currentTrack, setIsPlaying]);
+    }
+  };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const audio = audioRef.current;
-    if (audio) {
+    if (audioElement) {
       const seekTime = parseFloat(e.target.value);
-      audio.currentTime = seekTime;
+      audioElement.currentTime = seekTime;
       setProgress(seekTime);
     }
   };
 
-  const handlePlayPause = (e: React.MouseEvent | React.TouchEvent) => {
-    e.preventDefault();
-    console.log('Play/Pause button clicked', { currentIsPlaying: isPlaying });
-    setIsPlaying(!isPlaying);
-  };
-
   if (!currentTrack) {
-    return (
-      <div className="fixed bottom-0 left-0 right-0 bg-black/80 backdrop-blur-xl border-t border-white/10 p-6 z-50">
-        <div className="max-w-2xl mx-auto text-center text-white">
-          <p>Выберите трек для медитации</p>
-          <button 
-            onClick={handleTestClick}
-            onTouchStart={handleTestClick}
-            className="mt-4 px-4 py-2 bg-white/20 rounded-lg"
-          >
-            Тест клика (нажато: {testClick})
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div 
-      className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/20 p-6 z-50"
-      style={{ WebkitTapHighlightColor: 'transparent' }}
-    >
+    <div className="fixed bottom-0 left-0 right-0 bg-black/90 backdrop-blur-xl border-t border-white/20 p-6 z-50">
       <div className="max-w-2xl mx-auto">
-        <button 
-          onClick={handleTestClick}
-          onTouchStart={handleTestClick}
-          className="absolute top-2 right-2 px-2 py-1 bg-white/10 rounded text-xs"
-        >
-          Тест: {testClick}
-        </button>
-
         <div className="flex items-center gap-4 mb-4">
           <div className="text-4xl">{currentTrack.icon}</div>
           <div className="flex-1">
             <div className="text-white font-semibold text-lg">{currentTrack.title}</div>
-            <div className="text-white/40 text-xs">
-              Нажмите на кнопку воспроизведения
-            </div>
+            {isIOS && !isPlaying && (
+              <div className="text-yellow-400 text-xs mt-1">
+                🎵 Нажмите на кнопку воспроизведения
+              </div>
+            )}
+            {!isAudioLoaded && (
+              <div className="text-white/40 text-xs">
+                Загрузка...
+              </div>
+            )}
           </div>
         </div>
 
@@ -154,23 +138,19 @@ export default function AudioPlayer() {
             max={useStore.getState().duration || 100}
             value={progress}
             onChange={handleSeek}
-            onTouchStart={(e) => e.stopPropagation()}
             className="w-full h-2 bg-white/20 rounded-lg appearance-none cursor-pointer"
             style={{ accentColor: 'white' }}
           />
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center">
             <button
               type="button"
               onClick={handlePlayPause}
-              onTouchStart={handlePlayPause}
-              className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg hover:scale-105"
+              className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center active:scale-95 transition-all shadow-lg"
               style={{ 
                 cursor: 'pointer',
-                WebkitTapHighlightColor: 'transparent',
                 touchAction: 'manipulation'
               }}
-              aria-label={isPlaying ? 'Pause' : 'Play'}
             >
               <span className="text-4xl">{isPlaying ? '⏸️' : '▶️'}</span>
             </button>
