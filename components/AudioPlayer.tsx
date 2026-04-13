@@ -2,106 +2,102 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useStore } from '@/lib/store';
-import { audioService } from '@/lib/audioService';
 
 export default function AudioPlayer() {
   const { currentTrack, isPlaying, volume, setProgress, setDuration, setIsPlaying, progress } = useStore();
   const [isIOS, setIsIOS] = useState(false);
-  const [isAudioReady, setIsAudioReady] = useState(false);
-  const initAttemptedRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Определяем iOS
   useEffect(() => {
-    const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iOS);
+    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
   }, []);
 
-  // Инициализация аудио при смене трека
+  // Создаем аудио элемент при смене трека
   useEffect(() => {
     if (!currentTrack) return;
 
-    console.log('Initializing audio for:', currentTrack.title);
-    
-    audioService.init(currentTrack.src);
-    audioService.setCallbacks({
-      onTimeUpdate: (time) => setProgress(time),
-      onDurationChange: (duration) => setDuration(duration),
-      onEnded: () => {
-        setIsPlaying(false);
-        setProgress(0);
-      },
-    });
-    
-    audioService.setVolume(volume);
-    setIsAudioReady(true);
+    // Очищаем старый
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
 
-    // iOS: пробуем "разбудить" аудио при первом касании
-    const handleUserInteraction = async () => {
-      if (isIOS && audioService.getCurrentTime() === 0 && !initAttemptedRef.current) {
-        initAttemptedRef.current = true;
-        await audioService.play();
-        audioService.pause();
-        console.log('Audio context initialized');
-      }
+    // Создаем новый
+    const audio = new Audio(currentTrack.src);
+    audio.preload = 'auto';
+    audio.volume = volume;
+    
+    // Важно для iOS
+    audio.setAttribute('playsinline', 'true');
+    
+    // Обработчики
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration);
     };
-
-    document.addEventListener('touchstart', handleUserInteraction, { once: true });
     
+    const onTimeUpdate = () => {
+      setProgress(audio.currentTime);
+    };
+    
+    const onEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+    };
+    
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('ended', onEnded);
+    
+    audioRef.current = audio;
+
+    // Cleanup
     return () => {
-      document.removeEventListener('touchstart', handleUserInteraction);
-      audioService.pause();
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('ended', onEnded);
+      audio.pause();
     };
-  }, [currentTrack, setProgress, setDuration, setIsPlaying, volume, isIOS]);
+  }, [currentTrack, setDuration, setProgress, setIsPlaying, volume]);
 
   // Управление воспроизведением
   useEffect(() => {
-    if (!isAudioReady || !currentTrack) return;
+    const audio = audioRef.current;
+    if (!audio || !currentTrack) return;
 
-    const controlPlayback = async () => {
+    const togglePlay = async () => {
       if (isPlaying) {
-        const success = await audioService.play();
-        if (!success) {
-          console.log('Play failed, retrying...');
-          // На iOS пробуем еще раз с небольшим таймаутом
-          setTimeout(async () => {
-            const retrySuccess = await audioService.play();
-            if (!retrySuccess) {
-              setIsPlaying(false);
-            }
-          }, 100);
+        try {
+          await audio.play();
+        } catch (err) {
+          console.error('Play error:', err);
+          setIsPlaying(false);
         }
       } else {
-        audioService.pause();
+        audio.pause();
       }
     };
 
-    controlPlayback();
-  }, [isPlaying, isAudioReady, currentTrack, setIsPlaying]);
+    togglePlay();
+  }, [isPlaying, currentTrack, setIsPlaying]);
 
   // Громкость
   useEffect(() => {
-    audioService.setVolume(volume);
+    const audio = audioRef.current;
+    if (audio) {
+      audio.volume = volume;
+    }
   }, [volume]);
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const seekTime = parseFloat(e.target.value);
-    audioService.setCurrentTime(seekTime);
-    setProgress(seekTime);
+    const audio = audioRef.current;
+    if (audio) {
+      const seekTime = parseFloat(e.target.value);
+      audio.currentTime = seekTime;
+      setProgress(seekTime);
+    }
   };
 
-  // Для iOS добавляем кнопку-заглушку
-  const handlePlayButtonClick = async () => {
-    if (isIOS && !isPlaying) {
-      // На iOS нужно, чтобы play() вызывался напрямую из обработчика клика
-      const success = await audioService.play();
-      if (success) {
-        setIsPlaying(true);
-      } else {
-        console.log('Still cannot play, user interaction might be needed twice');
-      }
-    } else {
-      setIsPlaying(!isPlaying);
-    }
+  const handlePlayPause = () => {
+    setIsPlaying(!isPlaying);
   };
 
   if (!currentTrack) return null;
@@ -113,11 +109,11 @@ export default function AudioPlayer() {
           <div className="text-4xl">{currentTrack.icon}</div>
           <div className="flex-1">
             <div className="text-white font-semibold text-lg">{currentTrack.title}</div>
-            <div className="text-white/40 text-sm">
-              {isIOS && !isPlaying && audioService.getCurrentTime() === 0 && (
-                <span className="text-yellow-400 text-xs">⚠️ Нажмите Play для активации звука</span>
-              )}
-            </div>
+            {isIOS && (
+              <div className="text-yellow-400 text-xs mt-1">
+                ⚠️ Нажмите Play после выбора трека
+              </div>
+            )}
           </div>
         </div>
 
@@ -132,10 +128,10 @@ export default function AudioPlayer() {
             style={{ accentColor: 'white' }}
           />
 
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center">
             <button
               type="button"
-              onClick={handlePlayButtonClick}
+              onClick={handlePlayPause}
               className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center active:scale-90 transition-transform shadow-lg"
               aria-label={isPlaying ? 'Pause' : 'Play'}
             >

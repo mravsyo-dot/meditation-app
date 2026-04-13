@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useStore } from '@/lib/store';
 import { tracks } from '@/lib/tracks';
 import AudioPlayer from '@/components/AudioPlayer';
@@ -8,27 +8,15 @@ import AudioPlayer from '@/components/AudioPlayer';
 export default function Home() {
   const { currentTrack, isPlaying, setCurrentTrack, setIsPlaying } = useStore();
   const [debugMessage, setDebugMessage] = useState('Готов к работе');
-  const [isIOS, setIsIOS] = useState(false);
 
-  useEffect(() => {
-    setIsIOS(/iPad|iPhone|iPod/.test(navigator.userAgent));
-  }, []);
-
-  const handleTrackClick = async (track: typeof tracks[0]) => {
+  const handleTrackClick = (track: typeof tracks[0]) => {
     setDebugMessage(`Выбран трек: ${track.title}`);
     
     if (currentTrack?.id === track.id) {
       setIsPlaying(!isPlaying);
     } else {
       setCurrentTrack(track);
-      // На iOS даем небольшую задержку перед воспроизведением
-      if (isIOS) {
-        setTimeout(() => {
-          setIsPlaying(true);
-        }, 100);
-      } else {
-        setIsPlaying(true);
-      }
+      setIsPlaying(true);
     }
   };
 
