@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import PracticumPlayer from '@/components/PracticumPlayer';
+import React, { useState, useEffect } from 'react';
+import NativePlayer from '@/components/NativePlayer';
 
 interface Track {
   id: string;
@@ -17,15 +17,19 @@ export default function Home() {
 
   const tracks: Track[] = [
     { id: '1', title: 'Спокойный дождь', duration: '05:23', src: '/sounds/abc.m4a', icon: '🌧️' },
-    { id: '2', title: 'Лесные звуки', duration: '07:15', src: '/sounds/abca.m4a', icon: '🌲' },
-    { id: '3', title: 'Океан', duration: '10:00', src: '/sounds/ocean.m4a', icon: '🌊' },
-    { id: '4', title: 'Тибетские чаши', duration: '08:30', src: '/sounds/bowls.m4a', icon: '🔔' }
+    { id: '2', title: 'Лесные звуки', duration: '07:15', src: '/sounds/abca.m4a', icon: '🌲' }
   ];
 
   useEffect(() => {
     const date = new Date('2026-04-13T18:00:00+03:00');
     setReleaseTime(date.toLocaleString());
   }, []);
+
+  // Прямой обработчик без React-абстракций
+  const handleTrackSelect = (track: Track) => {
+    console.log('Selecting track:', track.title);
+    setSelectedTrack(track);
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900">
@@ -52,13 +56,18 @@ export default function Home() {
             {tracks.map((track) => (
               <button
                 key={track.id}
-                onClick={() => setSelectedTrack(track)}
+                onClick={() => handleTrackSelect(track)}
+                onTouchStart={(e) => {
+                  e.preventDefault();
+                  handleTrackSelect(track);
+                }}
                 className={`
                   group relative overflow-hidden rounded-2xl transition-all duration-300
                   ${selectedTrack?.id === track.id 
                     ? 'ring-2 ring-purple-500 scale-[1.02]' 
                     : 'hover:scale-[1.01]'}
                 `}
+                style={{ touchAction: 'manipulation' }}
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10" />
                 <div className="relative p-5 flex items-center gap-5">
@@ -79,7 +88,7 @@ export default function Home() {
         </div>
       </div>
       
-      <PracticumPlayer track={selectedTrack} />
+      <NativePlayer track={selectedTrack} />
     </main>
   );
 }

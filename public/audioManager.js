@@ -6,7 +6,8 @@ window.AudioManager = (function() {
         onPlay: [],
         onPause: [],
         onProgress: [],
-        onDuration: []
+        onDuration: [],
+        onTrackChange: []
     };
     
     function notify(event, data) {
@@ -15,11 +16,26 @@ window.AudioManager = (function() {
         }
     }
     
+    function updateUI() {
+        const playBtn = document.getElementById('nativePlayBtn');
+        if (playBtn && currentAudio) {
+            playBtn.textContent = currentAudio.paused ? '▶️' : '⏸️';
+        }
+        
+        const progressBar = document.getElementById('nativeProgressBar');
+        if (progressBar && currentAudio && currentAudio.duration) {
+            const progress = (currentAudio.currentTime / currentAudio.duration) * 100;
+            progressBar.value = progress;
+        }
+    }
+    
     return {
-        // Инициализация трека
         initTrack(track) {
+            console.log('initTrack called', track.title);
+            
             if (currentAudio) {
                 currentAudio.pause();
+                currentAudio = null;
             }
             
             currentTrack = track;
@@ -30,29 +46,40 @@ window.AudioManager = (function() {
             
             currentAudio.addEventListener('loadedmetadata', () => {
                 notify('onDuration', currentAudio.duration);
+                updateUI();
             });
             
             currentAudio.addEventListener('timeupdate', () => {
                 notify('onProgress', currentAudio.currentTime);
+                updateUI();
             });
             
             currentAudio.addEventListener('ended', () => {
                 notify('onPause', null);
-                notify('onEnd', null);
+                updateUI();
             });
             
             currentAudio.addEventListener('play', () => {
                 notify('onPlay', null);
+                updateUI();
             });
             
             currentAudio.addEventListener('pause', () => {
                 notify('onPause', null);
+                updateUI();
             });
+            
+            notify('onTrackChange', track);
+            updateUI();
+            
+            const playerDiv = document.getElementById('nativePlayer');
+            if (playerDiv) {
+                playerDiv.style.display = 'block';
+            }
             
             return true;
         },
         
-        // Управление
         async play() {
             if (!currentAudio) return false;
             try {
@@ -70,6 +97,15 @@ window.AudioManager = (function() {
             }
         },
         
+        toggle() {
+            if (!currentAudio) return;
+            if (currentAudio.paused) {
+                this.play();
+            } else {
+                this.pause();
+            }
+        },
+        
         seek(time) {
             if (currentAudio) {
                 currentAudio.currentTime = time;
@@ -82,7 +118,6 @@ window.AudioManager = (function() {
             }
         },
         
-        // Состояние
         isPlaying() {
             return currentAudio ? !currentAudio.paused : false;
         },
@@ -91,7 +126,6 @@ window.AudioManager = (function() {
             return currentTrack;
         },
         
-        // Слушатели
         on(event, callback) {
             if (listeners[event]) {
                 listeners[event].push(callback);
@@ -105,3 +139,24 @@ window.AudioManager = (function() {
         }
     };
 })();
+
+window.initTrack = function(trackId, trackSrc, trackTitle, trackIcon) {
+    window.AudioManager.initTrack({
+        id: trackId,
+        title: trackTitle,
+        src: trackSrc,
+        icon: trackIcon
+    });
+};
+
+window.togglePlayPause = function() {
+    window.AudioManager.toggle();
+};
+
+window.seekAudio = function(value) {
+    window.AudioManager.seek(parseFloat(value));
+};
+
+window.changeVolume = function(value) {
+    window.AudioManager.setVolume(parseFloat(value));
+};
