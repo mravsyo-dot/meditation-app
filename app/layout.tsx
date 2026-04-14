@@ -15,7 +15,8 @@ export default function RootLayout({
     <html lang="ru">
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
-        <script src="/player.js" defer></script>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <script src="/audioManager.js" defer></script>
       </head>
       <body>{children}</body>
     </html>
