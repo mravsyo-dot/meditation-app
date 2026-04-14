@@ -1,29 +1,27 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Audio Test on iPhone</title>
+    <title>Audio Test</title>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        body { 
+            background: #0f172a; 
+            color: white; 
+            font-family: system-ui; 
             padding: 20px;
-            background: #0f172a;
-            color: white;
+            margin: 0;
         }
-        button {
-            background: #3b82f6;
-            color: white;
-            padding: 15px 30px;
-            font-size: 18px;
-            border: none;
-            border-radius: 12px;
+        button { 
+            background: #3b82f6; 
+            color: white; 
+            padding: 20px; 
             margin: 10px 0;
+            border: none; 
+            border-radius: 12px; 
+            font-size: 18px;
+            width: 100%;
             cursor: pointer;
-            width: 100%;
-        }
-        audio {
-            width: 100%;
-            margin: 20px 0;
         }
         .status {
             background: #1e293b;
@@ -32,107 +30,73 @@
             margin: 10px 0;
             font-family: monospace;
         }
-        .release-time {
-            background: #10b981;
-            padding: 8px;
-            border-radius: 8px;
-            text-align: center;
-            margin: 10px 0;
-            font-weight: bold;
-        }
     </style>
 </head>
 <body>
-    <h1>🧘 Тест аудио на iPhone</h1>
+    <h1>🧘 Тест аудио</h1>
     
-    <div class="release-time" id="releaseTime">
-        Загрузка времени релиза...
-    </div>
+    <div class="status" id="status">Готов к работе</div>
     
-    <div class="status" id="status">
-        Статус: Готов к работе
-    </div>
-    
-    <button onclick="testButton()">
-        🔘 Тест кнопки
+    <button id="btn1">
+        🎵 Тест 1 (простой alert)
     </button>
     
-    <button onclick="testAudio()">
-        🎵 Тест аудио (abc.m4a)
+    <button id="btn2">
+        🎵 Тест 2 (прямой вызов Audio)
     </button>
     
-    <button onclick="testAudio2()">
-        🎵 Тест аудио (abca.m4a)
+    <button id="btn3">
+        🎵 Тест 3 (создание элемента)
     </button>
     
-    <audio id="player" controls>
+    <audio id="player" controls style="width: 100%; margin-top: 20px;">
         <source src="/sounds/abc.m4a" type="audio/mp4">
-        Ваш браузер не поддерживает аудио
     </audio>
-    
-    <div class="status" id="log">
-        Лог: Ожидание действий...
-    </div>
 
     <script>
-        let clickCount = 0;
         const statusDiv = document.getElementById('status');
-        const logDiv = document.getElementById('log');
-        const audioPlayer = document.getElementById('player');
         
-        // Время релиза (фиксированное или из переменной окружения)
-        const releaseDateTime = new Date('2026-04-13T12:00:00Z');
-        const releaseTimeElement = document.getElementById('releaseTime');
-        releaseTimeElement.textContent = `Релиз: ${releaseDateTime.toLocaleString()}`;
+        // Тест 1: Простой alert
+        document.getElementById('btn1').onclick = function() {
+            statusDiv.innerHTML = '✅ Alert должен появиться';
+            alert('Кнопка работает!');
+            statusDiv.innerHTML = '✅ Alert сработал';
+        };
         
-        function log(message) {
-            const time = new Date().toLocaleTimeString();
-            logDiv.innerHTML += `<br>${time}: ${message}`;
-            console.log(message);
-        }
+        // Тест 2: Прямой вызов Audio
+        document.getElementById('btn2').onclick = function() {
+            statusDiv.innerHTML = 'Пытаюсь воспроизвести...';
+            const audio = new Audio('/sounds/abc.m4a');
+            audio.play()
+                .then(() => {
+                    statusDiv.innerHTML = '✅ Аудио играет!';
+                })
+                .catch(err => {
+                    statusDiv.innerHTML = `❌ Ошибка: ${err.message}`;
+                });
+        };
         
-        function testButton() {
-            clickCount++;
-            statusDiv.innerHTML = `Статус: Кнопка нажата ${clickCount} раз`;
-            log(`Кнопка нажата! Клик #${clickCount}`);
-            alert(`Клик работает! (#${clickCount})`);
-        }
+        // Тест 3: Создание и добавление элемента
+        document.getElementById('btn3').onclick = function() {
+            statusDiv.innerHTML = 'Создаю аудио элемент...';
+            const audio = document.createElement('audio');
+            audio.src = '/sounds/abc.m4a';
+            audio.controls = true;
+            audio.style.width = '100%';
+            audio.style.marginTop = '10px';
+            document.body.appendChild(audio);
+            audio.play()
+                .then(() => {
+                    statusDiv.innerHTML = '✅ Аудио создано и играет';
+                })
+                .catch(err => {
+                    statusDiv.innerHTML = `❌ Ошибка: ${err.message}`;
+                });
+        };
         
-        async function testAudio() {
-            log('Пытаюсь воспроизвести abc.m4a...');
-            try {
-                const audio = new Audio('/sounds/abc.m4a');
-                audio.setAttribute('playsinline', 'true');
-                await audio.play();
-                log('✅ abc.m4a успешно играет!');
-                statusDiv.innerHTML = 'Статус: Аудио играет! 🎵';
-            } catch (error) {
-                log(`❌ Ошибка: ${error.message}`);
-                statusDiv.innerHTML = `Статус: Ошибка - ${error.message}`;
-            }
-        }
-        
-        async function testAudio2() {
-            log('Пытаюсь воспроизвести abca.m4a...');
-            try {
-                const audio = new Audio('/sounds/abca.m4a');
-                audio.setAttribute('playsinline', 'true');
-                await audio.play();
-                log('✅ abca.m4a успешно играет!');
-                statusDiv.innerHTML = 'Статус: Аудио играет! 🎵';
-            } catch (error) {
-                log(`❌ Ошибка: ${error.message}`);
-                statusDiv.innerHTML = `Статус: Ошибка - ${error.message}`;
-            }
-        }
-        
-        // Проверяем поддержку форматов
-        log('Страница загружена');
-        log(`User Agent: ${navigator.userAgent}`);
-        
-        const audio = document.createElement('audio');
-        const canPlayM4a = audio.canPlayType('audio/mp4');
-        log(`Поддержка audio/mp4: ${canPlayM4a || 'нет'}`);
+        // Логирование
+        console.log('Page loaded');
+        statusDiv.innerHTML = 'Страница загружена, нажмите кнопку';
     </script>
 </body>
 </html>
