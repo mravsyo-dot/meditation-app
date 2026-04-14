@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import NativePlayer from '@/components/NativePlayer';
+import { useState, useEffect } from 'react';
+import Player from '@/components/Player';
 
 interface Track {
   id: string;
@@ -25,7 +25,6 @@ export default function Home() {
     setReleaseTime(date.toLocaleString());
   }, []);
 
-  // Прямой обработчик без React-абстракций
   const handleTrackSelect = (track: Track) => {
     console.log('Selecting track:', track.title);
     setSelectedTrack(track);
@@ -57,10 +56,6 @@ export default function Home() {
               <button
                 key={track.id}
                 onClick={() => handleTrackSelect(track)}
-                onTouchStart={(e) => {
-                  e.preventDefault();
-                  handleTrackSelect(track);
-                }}
                 className={`
                   group relative overflow-hidden rounded-2xl transition-all duration-300
                   ${selectedTrack?.id === track.id 
@@ -88,7 +83,7 @@ export default function Home() {
         </div>
       </div>
       
-      <NativePlayer track={selectedTrack} />
+      <Player track={selectedTrack} />
     </main>
   );
 }

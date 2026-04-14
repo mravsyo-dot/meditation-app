@@ -3,112 +3,113 @@
     console.log('Player script loaded');
     
     let currentAudio = null;
-    let currentTrackId = null;
+    let currentTrack = null;
     
-    // Инициализация плеера
-    window.initPlayer = function(trackId, trackSrc, trackTitle, trackIcon) {
-        console.log('Init player:', trackId, trackSrc);
-        
-        // Останавливаем текущий
-        if (currentAudio) {
-            currentAudio.pause();
-            currentAudio = null;
-        }
-        
-        // Создаем новый audio элемент
-        const audio = new Audio(trackSrc);
-        audio.preload = 'auto';
-        audio.setAttribute('playsinline', 'true');
-        audio.volume = 0.7;
-        
-        // Обработчики
-        audio.addEventListener('loadedmetadata', function() {
-            console.log('Loaded metadata, duration:', audio.duration);
-            const durationElem = document.getElementById('playerDuration');
-            if (durationElem) {
-                const minutes = Math.floor(audio.duration / 60);
-                const seconds = Math.floor(audio.duration % 60);
-                durationElem.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    // Глобальные функции для вызова из React
+    window.Player = {
+        initTrack(track) {
+            console.log('Init track:', track.title);
+            
+            if (currentAudio) {
+                currentAudio.pause();
             }
-        });
-        
-        audio.addEventListener('timeupdate', function() {
-            const progress = (audio.currentTime / audio.duration) * 100;
-            const progressBar = document.getElementById('progressBar');
-            if (progressBar) {
-                progressBar.value = progress;
+            
+            currentTrack = track;
+            currentAudio = new Audio(track.src);
+            currentAudio.preload = 'auto';
+            currentAudio.setAttribute('playsinline', 'true');
+            currentAudio.volume = 0.7;
+            
+            // Обновляем UI плеера
+            const playerDiv = document.getElementById('playerContainer');
+            if (playerDiv) {
+                playerDiv.style.display = 'block';
             }
-        });
+            
+            const iconSpan = document.getElementById('playerIcon');
+            const titleSpan = document.getElementById('playerTitle');
+            if (iconSpan) iconSpan.textContent = track.icon;
+            if (titleSpan) titleSpan.textContent = track.title;
+            
+            // Обработчики
+            currentAudio.addEventListener('timeupdate', () => {
+                const progressBar = document.getElementById('progressBar');
+                if (progressBar && currentAudio.duration) {
+                    const percent = (currentAudio.currentTime / currentAudio.duration) * 100;
+                    progressBar.value = percent;
+                }
+                
+                const currentTimeSpan = document.getElementById('currentTime');
+                if (currentTimeSpan) {
+                    const mins = Math.floor(currentAudio.currentTime / 60);
+                    const secs = Math.floor(currentAudio.currentTime % 60);
+                    currentTimeSpan.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+            });
+            
+            currentAudio.addEventListener('loadedmetadata', () => {
+                const durationSpan = document.getElementById('duration');
+                if (durationSpan) {
+                    const mins = Math.floor(currentAudio.duration / 60);
+                    const secs = Math.floor(currentAudio.duration % 60);
+                    durationSpan.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+                }
+            });
+            
+            currentAudio.addEventListener('play', () => {
+                const playBtn = document.getElementById('playPauseBtn');
+                if (playBtn) playBtn.textContent = '⏸️';
+            });
+            
+            currentAudio.addEventListener('pause', () => {
+                const playBtn = document.getElementById('playPauseBtn');
+                if (playBtn) playBtn.textContent = '▶️';
+            });
+            
+            currentAudio.addEventListener('ended', () => {
+                const playBtn = document.getElementById('playPauseBtn');
+                if (playBtn) playBtn.textContent = '▶️';
+            });
+        },
         
-        audio.addEventListener('ended', function() {
-            const playBtn = document.getElementById('playPauseBtn');
-            if (playBtn) playBtn.textContent = '▶️';
-        });
-        
-        audio.addEventListener('play', function() {
-            const playBtn = document.getElementById('playPauseBtn');
-            if (playBtn) playBtn.textContent = '⏸️';
-        });
-        
-        audio.addEventListener('pause', function() {
-            const playBtn = document.getElementById('playPauseBtn');
-            if (playBtn) playBtn.textContent = '▶️';
-        });
-        
-        currentAudio = audio;
-        currentTrackId = trackId;
-        
-        // Показываем плеер
-        const playerDiv = document.getElementById('player');
-        if (playerDiv) {
-            playerDiv.style.display = 'block';
-        }
-        
-        // Обновляем UI
-        const iconElem = document.getElementById('playerIcon');
-        const titleElem = document.getElementById('playerTitle');
-        if (iconElem) iconElem.textContent = trackIcon;
-        if (titleElem) titleElem.textContent = trackTitle;
-        
-        console.log('Player initialized successfully');
-    };
-    
-    // Play/Pause
-    window.togglePlayPause = function() {
-        console.log('Toggle play/pause');
-        
-        if (!currentAudio) {
-            alert('Сначала выберите трек');
-            return;
-        }
-        
-        if (currentAudio.paused) {
-            const playPromise = currentAudio.play();
-            if (playPromise !== undefined) {
-                playPromise.catch(error => {
-                    console.error('Play error:', error);
-                    alert('Нажмите еще раз для воспроизведения');
-                });
+        async togglePlay() {
+            if (!currentAudio) {
+                alert('Сначала выберите трек');
+                return;
             }
-        } else {
-            currentAudio.pause();
+            
+            if (currentAudio.paused) {
+                try {
+                    await currentAudio.play();
+                } catch(e) {
+                    console.error('Play error:', e);
+                    alert('Нажмите еще раз');
+                }
+            } else {
+                currentAudio.pause();
+            }
+        },
+        
+        seek(value) {
+            if (currentAudio && currentAudio.duration) {
+                const time = (value / 100) * currentAudio.duration;
+                currentAudio.currentTime = time;
+            }
+        },
+        
+        setVolume(value) {
+            if (currentAudio) {
+                currentAudio.volume = value;
+            }
         }
     };
     
-    // Seek
-    window.seek = function(value) {
-        if (currentAudio && currentAudio.duration) {
-            const time = (value / 100) * currentAudio.duration;
-            currentAudio.currentTime = time;
-        }
-    };
-    
-    // Volume
-    window.setVolume = function(value) {
-        if (currentAudio) {
-            currentAudio.volume = value / 100;
-        }
-    };
-    
-    console.log('Player API ready');
+    // Ждем загрузки DOM
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM ready, player initialized');
+        });
+    } else {
+        console.log('Player ready');
+    }
 })();
